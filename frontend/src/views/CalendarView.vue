@@ -3,7 +3,7 @@ import AppLayout from '@/components/AppLayout.vue'
 </script>
 
 <template>
-  <AppLayout title="Calendar">
+  <AppLayout title="Schedule">
     <p class="muted">
       Coming episodes will appear here. Wire this to a backend endpoint that
       returns upcoming/recently-aired episodes (see app/api/routes — add a

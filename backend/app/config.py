@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     backlog_search_interval: int = 60 * 24
     show_update_interval: int = 60 * 12
 
+    # TheTVDB v4 API. Register a free key at https://thetvdb.com/dashboard/account/apikey
+    # The free tier also requires a subscriber PIN; licensed keys do not. Set once
+    # via SCM_TVDB_API_KEY / SCM_TVDB_PIN; never entered in the UI.
+    tvdb_api_key: str | None = None
+    tvdb_pin: str | None = None
+    tvdb_language: str = "eng"
+
     @property
     def resolved_database_url(self) -> str:
         if self.database_url:

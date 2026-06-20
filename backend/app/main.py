@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
 from app.api.routes import api_router
@@ -85,8 +86,26 @@ async def healthz():
     return {"status": "ok"}
 
 
-# Serve the built frontend (frontend/dist) if present, so a single container
-# can serve both API and UI. In dev the SPA runs separately via Vite.
+class SPAStaticFiles(StaticFiles):
+    """StaticFiles with single-page-app fallback.
+
+    Serves real files (assets, sw.js, manifest) normally, but falls back to
+    index.html for client-side routes (e.g. /manage, /show/5) so deep links and
+    refreshes work. Paths that look like files (have an extension) still 404.
+    """
+
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and "." not in path.rsplit("/", 1)[-1]:
+                return await super().get_response("index.html", scope)
+            raise
+
+
+# Serve the built frontend if present, so a single container serves API + UI.
+# In dev the SPA runs separately via Vite. API routes are registered above and
+# take precedence over this catch-all mount.
 _frontend_dist = Path(__file__).resolve().parent.parent / "static"
 if _frontend_dist.is_dir():
-    app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="frontend")
+    app.mount("/", SPAStaticFiles(directory=_frontend_dist, html=True), name="frontend")

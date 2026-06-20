@@ -1,26 +1,30 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import { MENU, MOBILE_PRIMARY } from '@/menu'
 
-const items = [
-  { name: 'shows', label: 'Shows', icon: '📺' },
-  { name: 'calendar', label: 'Calendar', icon: '🗓️' },
-  { name: 'history', label: 'History', icon: '🕘' },
-  { name: 'settings', label: 'Settings', icon: '⚙️' },
-]
+defineEmits<{ openMenu: [] }>()
+
+// Primary destinations on the bottom bar; everything else lives in the drawer.
+const primary = MOBILE_PRIMARY.map((key) => MENU.find((g) => g.key === key)!).filter(Boolean)
 </script>
 
 <template>
   <nav class="bottom-nav">
     <RouterLink
-      v-for="item in items"
-      :key="item.name"
-      :to="{ name: item.name }"
+      v-for="group in primary"
+      :key="group.key"
+      :to="{ name: group.route ?? group.key }"
       class="nav-item"
       active-class="active"
     >
-      <span class="icon">{{ item.icon }}</span>
-      <span class="label">{{ item.label }}</span>
+      <span class="icon">{{ group.icon }}</span>
+      <span class="label">{{ group.label }}</span>
     </RouterLink>
+
+    <button class="nav-item menu-btn" @click="$emit('openMenu')">
+      <span class="icon">☰</span>
+      <span class="label">Menu</span>
+    </button>
   </nav>
 </template>
 
@@ -46,7 +50,10 @@ const items = [
   gap: 2px;
   color: var(--muted);
   font-size: 0.7rem;
+  background: transparent;
+  border-radius: 0;
 }
 .nav-item .icon { font-size: 1.25rem; }
 .nav-item.active { color: var(--accent); }
+.menu-btn { font-weight: 400; }
 </style>
