@@ -30,6 +30,9 @@ async def set_status(episode_id: int, payload: EpisodeStatusUpdate, db: DbSessio
 
 @router.post("/{episode_id}/search", response_model=Message)
 async def search_now(episode_id: int, db: DbSession, _: CurrentUser):
+    """Manual search: find releases, snatch the best, and report what was grabbed."""
     episode = await _get_or_404(db, episode_id)
-    results = await search_service.search_episode(db, episode)
-    return Message(message=f"Search complete: {len(results)} result(s) found")
+    best = await search_service.snatch_episode(db, episode)
+    if best is None:
+        return Message(message="No results found")
+    return Message(message=f"Snatched: {best.title} (from {best.provider})")

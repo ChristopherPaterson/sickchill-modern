@@ -1,20 +1,36 @@
-"""Search service: orchestrate providers to find releases for wanted episodes."""
+"""Search service: orchestrate providers, rank results, snatch the best."""
 from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import date
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.episode import Episode, EpisodeStatus
+from app.models.history import HistoryAction, HistoryEntry
 from app.providers.base import SearchQuery, SearchResult
+from app.providers.quality import parse_release
 from app.providers.registry import enabled_providers
 
 logger = logging.getLogger(__name__)
 
 
-async def search_episode(db: AsyncSession, episode: Episode) -> list[SearchResult]:
-    """Search all enabled providers concurrently for one episode."""
+def _score(result: SearchResult) -> tuple[int, int]:
+    """Rank key: higher quality first, then more seeders. Quality parsed from the
+    release title if the provider did not supply it."""
+    quality = parse_release(result.title).quality
+    return (int(quality), result.seeders or 0)
+
+
+def rank_results(results: list[SearchResult]) -> list[SearchResult]:
+    """Best release first."""
+    return sorted(results, key=_score, reverse=True)
+
+
+async def find_results(db: AsyncSession, episode: Episode) -> list[SearchResult]:
+    """Search all enabled providers concurrently for one episode, ranked best-first."""
     show = await episode.awaitable_attrs.show
     query = SearchQuery(
         show_name=show.name,
@@ -23,32 +39,82 @@ async def search_episode(db: AsyncSession, episode: Episode) -> list[SearchResul
         quality=show.quality,
     )
 
-    providers = enabled_providers()
+    providers = await enabled_providers(db)
     if not providers:
-        logger.info("no providers enabled; skipping search for %s S%02dE%02d",
-                    show.name, episode.season, episode.episode)
+        logger.info(
+            "no providers enabled; skipping search for %s S%02dE%02d",
+            show.name, episode.season, episode.episode,
+        )
         return []
 
-    results_per_provider = await asyncio.gather(
-        *(p.search(query) for p in providers),
-        return_exceptions=True,
-    )
+    try:
+        outcomes = await asyncio.gather(
+            *(p.search(query) for p in providers),
+            return_exceptions=True,
+        )
+    finally:
+        await asyncio.gather(*(p.close() for p in providers), return_exceptions=True)
 
     results: list[SearchResult] = []
-    for provider, outcome in zip(providers, results_per_provider, strict=True):
+    for provider, outcome in zip(providers, outcomes, strict=True):
         if isinstance(outcome, BaseException):
             logger.error("provider %s raised: %s", provider.name, outcome)
             continue
         results.extend(outcome)
 
-    # TODO: rank results (quality, seeders, preferred words) and pick the best.
-    return results
+    return rank_results(results)
+
+
+async def snatch_episode(db: AsyncSession, episode: Episode) -> SearchResult | None:
+    """Search, pick the best result, mark the episode snatched and log history.
+
+    Returns the chosen result, or None if nothing was found. The actual handoff
+    to a download client is the next engine piece (see TODO).
+    """
+    results = await find_results(db, episode)
+    if not results:
+        return None
+
+    best = results[0]
+    parsed = parse_release(best.title)
+
+    episode.status = EpisodeStatus.snatched
+    episode.quality = parsed.quality.name
+    episode.release_name = best.title
+    db.add(
+        HistoryEntry(
+            show_id=episode.show_id,
+            episode_id=episode.id,
+            action=HistoryAction.snatched,
+            quality=parsed.quality.name,
+            provider=best.provider,
+            release_name=best.title,
+            season=episode.season,
+            episode=episode.episode,
+        )
+    )
+    await db.commit()
+
+    # TODO: send best.download_url to the configured download client
+    # (qBittorrent / SABnzbd) instead of only recording the snatch.
+    logger.info("snatched %s S%02dE%02d: %s", best.provider, episode.season, episode.episode, best.title)
+    return best
 
 
 async def daily_search(db: AsyncSession) -> int:
-    """Find and snatch newly aired wanted episodes. Returns count processed."""
-    # TODO: query wanted episodes whose air_date <= today, search, snatch best result,
-    # hand off to the download client, and record a HistoryEntry.
-    _ = EpisodeStatus  # referenced by the real implementation
-    logger.info("daily_search tick (not yet implemented)")
-    return 0
+    """Find and snatch wanted episodes that have aired. Returns count snatched."""
+    today = date.today()
+    result = await db.execute(
+        select(Episode).where(
+            Episode.status == EpisodeStatus.wanted,
+            Episode.air_date.is_not(None),
+            Episode.air_date <= today,
+        )
+    )
+    wanted = list(result.scalars().all())
+    snatched = 0
+    for episode in wanted:
+        if await snatch_episode(db, episode):
+            snatched += 1
+    logger.info("daily_search: %d/%d wanted episodes snatched", snatched, len(wanted))
+    return snatched

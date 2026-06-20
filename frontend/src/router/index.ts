@@ -21,6 +21,12 @@ const realRoutes: RouteRecordRaw[] = [
   { path: '/schedule', name: 'schedule', component: () => import('@/views/CalendarView.vue'), meta: { title: 'Schedule' } },
   { path: '/history', name: 'history', component: () => import('@/views/HistoryView.vue'), meta: { title: 'History' } },
   { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue'), meta: { title: 'General' } },
+  {
+    path: '/config/providers',
+    name: 'config-providers',
+    component: () => import('@/views/SearchProvidersView.vue'),
+    meta: { title: 'Search Providers' },
+  },
 ]
 
 // Routes that are scaffolded (in the menu, routable) but not yet implemented.
@@ -35,7 +41,6 @@ const stub: Array<[string, string, string]> = [
   ['/manage/failed', 'manage-failed', 'Failed Downloads'],
   ['/manage/subtitles', 'manage-subtitles', 'Missed Subtitles'],
   ['/config/search', 'config-search', 'Search Settings'],
-  ['/config/providers', 'config-providers', 'Search Providers'],
   ['/config/subtitles', 'config-subtitles', 'Subtitles'],
   ['/config/post-processing', 'config-postprocessing', 'Post Processing'],
   ['/config/notifications', 'config-notifications', 'Notifications'],

@@ -1,19 +1,29 @@
-"""Provider registry. Discover and instantiate enabled providers."""
+"""Provider registry: build provider instances from the DB configuration."""
 from __future__ import annotations
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.provider import ProviderConfig, ProviderType
 from app.providers.base import Provider
-from app.providers.example import ExampleProvider
-
-# Register provider classes here as you implement them.
-_PROVIDER_CLASSES: list[type[Provider]] = [
-    ExampleProvider,
-]
+from app.providers.newznab import NewznabProvider
 
 
-def all_providers() -> list[Provider]:
-    return [cls() for cls in _PROVIDER_CLASSES]
+def _build(cfg: ProviderConfig) -> Provider:
+    return NewznabProvider(
+        name=cfg.name,
+        url=cfg.url,
+        api_key=cfg.api_key,
+        is_torrent=cfg.type == ProviderType.torznab,
+        min_seeders=cfg.min_seeders,
+    )
 
 
-def enabled_providers() -> list[Provider]:
-    # TODO: read enabled state from the Setting table rather than the class default.
-    return [p for p in all_providers() if p.enabled]
+async def enabled_providers(db: AsyncSession) -> list[Provider]:
+    """Instantiate every enabled provider, highest priority first."""
+    result = await db.execute(
+        select(ProviderConfig)
+        .where(ProviderConfig.enabled.is_(True))
+        .order_by(ProviderConfig.priority.desc())
+    )
+    return [_build(cfg) for cfg in result.scalars().all()]
