@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, DbSession
+from app.downloaders.sabnzbd import SABnzbdClient
 from app.schemas.common import Message
 from app.services import settings_service as ss
 
@@ -44,3 +45,57 @@ async def set_indexer_config(payload: IndexerConfigIn, db: DbSession, _: Current
     if payload.language is not None:
         await ss.set_setting(db, ss.TVDB_LANGUAGE, payload.language or None)
     return Message(message="Indexer configuration saved")
+
+
+class DownloadConfigOut(BaseModel):
+    configured: bool
+    enabled: bool
+    url: str | None
+    category: str | None
+    # api_key intentionally omitted (secret).
+
+
+class DownloadConfigIn(BaseModel):
+    # Omit a field to leave it unchanged; send "" to clear it.
+    url: str | None = None
+    api_key: str | None = None
+    category: str | None = None
+    enabled: bool | None = None
+
+
+@router.get("/download", response_model=DownloadConfigOut)
+async def get_download_config(db: DbSession, _: CurrentUser):
+    cfg = await ss.get_download_config(db)
+    return DownloadConfigOut(
+        configured=cfg.configured,
+        enabled=cfg.enabled,
+        url=cfg.url,
+        category=cfg.category,
+    )
+
+
+@router.put("/download", response_model=Message)
+async def set_download_config(payload: DownloadConfigIn, db: DbSession, _: CurrentUser):
+    if payload.url is not None:
+        await ss.set_setting(db, ss.SAB_URL, payload.url or None)
+    if payload.api_key is not None:
+        await ss.set_setting(db, ss.SAB_API_KEY, payload.api_key or None)
+    if payload.category is not None:
+        await ss.set_setting(db, ss.SAB_CATEGORY, payload.category or None)
+    if payload.enabled is not None:
+        await ss.set_setting(db, ss.DOWNLOAD_ENABLED, "true" if payload.enabled else "false")
+    return Message(message="Download client configuration saved")
+
+
+@router.post("/download/test", response_model=Message)
+async def test_download_config(db: DbSession, _: CurrentUser):
+    """Test connectivity to the saved SABnzbd config."""
+    cfg = await ss.get_download_config(db)
+    if not cfg.configured:
+        return Message(message="Not configured: set the SABnzbd URL and API key first")
+    client = SABnzbdClient(url=cfg.url, api_key=cfg.api_key, category=cfg.category)
+    try:
+        ok, message = await client.test()
+    finally:
+        await client.close()
+    return Message(message=message if ok else f"Test failed: {message}")

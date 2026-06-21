@@ -17,6 +17,11 @@ TVDB_API_KEY = "tvdb_api_key"
 TVDB_PIN = "tvdb_pin"
 TVDB_LANGUAGE = "tvdb_language"
 
+SAB_URL = "sab_url"
+SAB_API_KEY = "sab_api_key"
+SAB_CATEGORY = "sab_category"
+DOWNLOAD_ENABLED = "download_enabled"
+
 
 async def get_setting(db: AsyncSession, key: str) -> str | None:
     row = await db.get(Setting, key)
@@ -45,4 +50,26 @@ async def get_tvdb_credentials(db: AsyncSession) -> TVDBCredentials:
         api_key=await get_setting(db, TVDB_API_KEY) or env_settings.tvdb_api_key,
         pin=await get_setting(db, TVDB_PIN) or env_settings.tvdb_pin,
         language=await get_setting(db, TVDB_LANGUAGE) or env_settings.tvdb_language,
+    )
+
+
+@dataclass(slots=True)
+class DownloadConfig:
+    enabled: bool
+    url: str | None
+    api_key: str | None
+    category: str | None
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.url and self.api_key)
+
+
+async def get_download_config(db: AsyncSession) -> DownloadConfig:
+    enabled = (await get_setting(db, DOWNLOAD_ENABLED)) == "true"
+    return DownloadConfig(
+        enabled=enabled,
+        url=await get_setting(db, SAB_URL),
+        api_key=await get_setting(db, SAB_API_KEY),
+        category=await get_setting(db, SAB_CATEGORY),
     )

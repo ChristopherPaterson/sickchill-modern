@@ -8,6 +8,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.downloaders import maybe_download
 from app.models.episode import Episode, EpisodeStatus
 from app.models.history import HistoryAction, HistoryEntry
 from app.providers.base import SearchQuery, SearchResult
@@ -78,6 +79,10 @@ async def snatch_episode(db: AsyncSession, episode: Episode) -> SearchResult | N
     best = results[0]
     parsed = parse_release(best.title)
 
+    # Hand off to the download client if downloads are enabled (off by default).
+    # None = not attempted, True = sent, False = client rejected it.
+    sent = await maybe_download(db, best.download_url)
+
     episode.status = EpisodeStatus.snatched
     episode.quality = parsed.quality.name
     episode.release_name = best.title
@@ -95,9 +100,11 @@ async def snatch_episode(db: AsyncSession, episode: Episode) -> SearchResult | N
     )
     await db.commit()
 
-    # TODO: send best.download_url to the configured download client
-    # (qBittorrent / SABnzbd) instead of only recording the snatch.
-    logger.info("snatched %s S%02dE%02d: %s", best.provider, episode.season, episode.episode, best.title)
+    logger.info(
+        "snatched %s S%02dE%02d: %s (download %s)",
+        best.provider, episode.season, episode.episode, best.title,
+        {True: "sent", False: "FAILED to send", None: "disabled/not configured"}[sent],
+    )
     return best
 
 
