@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     daily_search_interval: int = 60
     backlog_search_interval: int = 60 * 24
     show_update_interval: int = 60 * 12
+    post_process_interval: int = 15
 
     # TheTVDB v4 API. Register a free key at https://thetvdb.com/dashboard/account/apikey
     # The free tier also requires a subscriber PIN; licensed keys do not. Set once

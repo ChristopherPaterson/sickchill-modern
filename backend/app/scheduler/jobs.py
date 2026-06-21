@@ -36,3 +36,21 @@ async def show_update_job() -> None:
         logger.info("show_update_job tick (not yet implemented)")
     except Exception:
         logger.exception("show_update_job failed")
+
+
+async def post_process_job() -> None:
+    """Auto post-processing: file SABnzbd's completed downloads. Only runs when
+    post-processing is explicitly enabled (off by default)."""
+    try:
+        from app.postprocessing import run_completed_downloads
+        from app.services.settings_service import get_processing_config
+
+        async with SessionLocal() as db:
+            cfg = await get_processing_config(db)
+            if not cfg.enabled:
+                return
+            results = await run_completed_downloads(db)
+        filed = sum(1 for r in results if r.status == "filed")
+        logger.info("post_process_job: %d filed (%d processed)", filed, len(results))
+    except Exception:
+        logger.exception("post_process_job failed")

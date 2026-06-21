@@ -45,6 +45,15 @@ def start_scheduler() -> None:
         coalesce=True,
         max_instances=1,
     )
+    scheduler.add_job(
+        jobs.post_process_job,
+        "interval",
+        minutes=settings.post_process_interval,
+        id="post_process",
+        replace_existing=True,
+        coalesce=True,
+        max_instances=1,
+    )
     scheduler.start()
     logger.info("scheduler started with %d jobs", len(scheduler.get_jobs()))
 

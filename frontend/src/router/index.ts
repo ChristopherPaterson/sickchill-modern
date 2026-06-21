@@ -18,6 +18,18 @@ const realRoutes: RouteRecordRaw[] = [
     meta: { title: 'Show' },
   },
   { path: '/add-shows', name: 'add-shows', component: () => import('@/views/AddShowsView.vue'), meta: { title: 'Add Shows' } },
+  {
+    path: '/post-process',
+    name: 'post-process',
+    component: () => import('@/views/ManualPostProcessView.vue'),
+    meta: { title: 'Manual Post-Processing' },
+  },
+  {
+    path: '/config/post-processing',
+    name: 'config-postprocessing',
+    component: () => import('@/views/PostProcessingConfigView.vue'),
+    meta: { title: 'Post Processing' },
+  },
   { path: '/schedule', name: 'schedule', component: () => import('@/views/CalendarView.vue'), meta: { title: 'Schedule' } },
   { path: '/history', name: 'history', component: () => import('@/views/HistoryView.vue'), meta: { title: 'History' } },
   { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue'), meta: { title: 'General' } },
@@ -33,7 +45,6 @@ const realRoutes: RouteRecordRaw[] = [
 // They render the generic PlaceholderView using meta.title.
 const placeholder = () => import('@/views/PlaceholderView.vue')
 const stub: Array<[string, string, string]> = [
-  ['/post-process', 'post-process', 'Manual Post-Processing'],
   ['/manage', 'manage', 'Mass Update'],
   ['/manage/backlog', 'manage-backlog', 'Backlog Overview'],
   ['/manage/searches', 'manage-searches', 'Manage Searches'],
@@ -42,7 +53,6 @@ const stub: Array<[string, string, string]> = [
   ['/manage/subtitles', 'manage-subtitles', 'Missed Subtitles'],
   ['/config/search', 'config-search', 'Search Settings'],
   ['/config/subtitles', 'config-subtitles', 'Subtitles'],
-  ['/config/post-processing', 'config-postprocessing', 'Post Processing'],
   ['/config/notifications', 'config-notifications', 'Notifications'],
   ['/system/status', 'system-status', 'Server Status'],
   ['/system/log', 'system-log', 'View Log'],

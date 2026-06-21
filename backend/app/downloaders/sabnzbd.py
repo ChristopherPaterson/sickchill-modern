@@ -51,6 +51,17 @@ class SABnzbdClient(DownloadClient):
             return False
         return True
 
+    async def history(self) -> list[dict]:
+        """Completed downloads (for post-processing). Each item has name, storage
+        (the path to the downloaded files), category and status."""
+        try:
+            data = await self._call({"mode": "history", "limit": "50"})
+        except (httpx.HTTPError, ValueError):
+            logger.exception("SABnzbd history fetch failed")
+            return []
+        slots = (data.get("history") or {}).get("slots") or []
+        return [s for s in slots if (s.get("status") == "Completed")]
+
     async def test(self) -> tuple[bool, str]:
         try:
             data = await self._call({"mode": "queue", "limit": "0"})

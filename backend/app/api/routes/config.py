@@ -99,3 +99,35 @@ async def test_download_config(db: DbSession, _: CurrentUser):
     finally:
         await client.close()
     return Message(message=message if ok else f"Test failed: {message}")
+
+
+class ProcessingConfigOut(BaseModel):
+    configured: bool
+    enabled: bool
+    library_root: str | None
+    method: str
+
+
+class ProcessingConfigIn(BaseModel):
+    library_root: str | None = None
+    method: str | None = None  # move | copy | hardlink
+    enabled: bool | None = None
+
+
+@router.get("/processing", response_model=ProcessingConfigOut)
+async def get_processing_config(db: DbSession, _: CurrentUser):
+    cfg = await ss.get_processing_config(db)
+    return ProcessingConfigOut(
+        configured=cfg.configured, enabled=cfg.enabled, library_root=cfg.library_root, method=cfg.method
+    )
+
+
+@router.put("/processing", response_model=Message)
+async def set_processing_config(payload: ProcessingConfigIn, db: DbSession, _: CurrentUser):
+    if payload.library_root is not None:
+        await ss.set_setting(db, ss.TV_LIBRARY_ROOT, payload.library_root or None)
+    if payload.method is not None and payload.method in {"move", "copy", "hardlink"}:
+        await ss.set_setting(db, ss.PROCESSING_METHOD, payload.method)
+    if payload.enabled is not None:
+        await ss.set_setting(db, ss.PROCESSING_ENABLED, "true" if payload.enabled else "false")
+    return Message(message="Post-processing configuration saved")
