@@ -44,6 +44,19 @@ export interface ShowStats {
   snatched: number
 }
 
+/** Row in the show-list table (SickChill-style columns). */
+export interface ShowListItem {
+  id: number
+  name: string
+  network: string | null
+  quality: string
+  status: ShowStatus
+  paused: boolean
+  episode_count: number
+  downloaded_count: number
+  next_air_date: string | null
+}
+
 export interface HistoryEntry {
   id: number
   show_id: number | null

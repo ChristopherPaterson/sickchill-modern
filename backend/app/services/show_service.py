@@ -8,14 +8,14 @@ from __future__ import annotations
 import logging
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.indexers import get_indexer
 from app.indexers.base import IndexerShow
 from app.models.episode import Episode, EpisodeStatus
 from app.models.show import Show, ShowStatus
-from app.schemas.show import ShowCreate, ShowStats, ShowUpdate
+from app.schemas.show import ShowCreate, ShowListItem, ShowStats, ShowUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,48 @@ logger = logging.getLogger(__name__)
 async def list_shows(db: AsyncSession) -> list[Show]:
     result = await db.execute(select(Show).order_by(Show.name))
     return list(result.scalars().all())
+
+
+async def list_shows_overview(db: AsyncSession) -> list[ShowListItem]:
+    """Show-list rows with per-show aggregates (episode/download counts, next air
+    date), computed in grouped queries to avoid N+1."""
+    shows = (await db.execute(select(Show).order_by(Show.name))).scalars().all()
+
+    downloaded_states = (EpisodeStatus.downloaded, EpisodeStatus.archived)
+    counts = await db.execute(
+        select(
+            Episode.show_id,
+            func.count().label("total"),
+            func.sum(case((Episode.status.in_(downloaded_states), 1), else_=0)).label("downloaded"),
+        ).group_by(Episode.show_id)
+    )
+    count_map = {row.show_id: (row.total, int(row.downloaded or 0)) for row in counts}
+
+    today = date.today()
+    next_eps = await db.execute(
+        select(Episode.show_id, func.min(Episode.air_date))
+        .where(Episode.air_date >= today)
+        .group_by(Episode.show_id)
+    )
+    next_map = {show_id: air for show_id, air in next_eps}
+
+    items: list[ShowListItem] = []
+    for s in shows:
+        total, downloaded = count_map.get(s.id, (0, 0))
+        items.append(
+            ShowListItem(
+                id=s.id,
+                name=s.name,
+                network=s.network,
+                quality=s.quality,
+                status=s.status,
+                paused=s.paused,
+                episode_count=total,
+                downloaded_count=downloaded,
+                next_air_date=next_map.get(s.id),
+            )
+        )
+    return items
 
 
 async def get_show(db: AsyncSession, show_id: int) -> Show | None:

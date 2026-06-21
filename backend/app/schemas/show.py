@@ -1,6 +1,8 @@
 """Show schemas."""
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, ConfigDict
 
 from app.models.show import ShowStatus
@@ -49,3 +51,17 @@ class ShowStats(BaseModel):
     downloaded: int
     wanted: int
     snatched: int
+
+
+class ShowListItem(BaseModel):
+    """Row for the show-list table (SickChill-style columns)."""
+
+    id: int
+    name: str
+    network: str | None
+    quality: str
+    status: ShowStatus
+    paused: bool
+    episode_count: int
+    downloaded_count: int
+    next_air_date: date | None

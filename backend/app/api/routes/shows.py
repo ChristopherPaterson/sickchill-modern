@@ -5,15 +5,15 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.episode import EpisodeOut
-from app.schemas.show import ShowCreate, ShowOut, ShowStats, ShowUpdate
+from app.schemas.show import ShowCreate, ShowListItem, ShowOut, ShowStats, ShowUpdate
 from app.services import show_service
 
 router = APIRouter(prefix="/shows", tags=["shows"])
 
 
-@router.get("", response_model=list[ShowOut])
+@router.get("", response_model=list[ShowListItem])
 async def list_shows(db: DbSession, _: CurrentUser):
-    return await show_service.list_shows(db)
+    return await show_service.list_shows_overview(db)
 
 
 @router.post("", response_model=ShowOut, status_code=status.HTTP_201_CREATED)

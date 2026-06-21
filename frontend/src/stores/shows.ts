@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/api/client'
-import type { Episode, Show } from '@/api/types'
+import type { Episode, Show, ShowListItem } from '@/api/types'
 
 export const useShowsStore = defineStore('shows', () => {
-  const shows = ref<Show[]>([])
+  const shows = ref<ShowListItem[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -12,7 +12,7 @@ export const useShowsStore = defineStore('shows', () => {
     loading.value = true
     error.value = null
     try {
-      const { data } = await api.get<Show[]>('/shows')
+      const { data } = await api.get<ShowListItem[]>('/shows')
       shows.value = data
     } catch {
       error.value = 'Failed to load shows'
