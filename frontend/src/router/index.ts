@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { getToken } from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 
 // Routes backed by real views.
 const realRoutes: RouteRecordRaw[] = [
@@ -63,8 +64,13 @@ const router = createRouter({
   routes: [...realRoutes, ...stubRoutes],
 })
 
-// Global auth guard: everything except `public` routes requires a token.
+// Global auth guard. When auth is disabled there is no login at all.
 router.beforeEach((to) => {
+  const auth = useAuthStore()
+  if (!auth.authEnabled) {
+    // No-login mode: never show the login page.
+    return to.name === 'login' ? { name: 'shows' } : true
+  }
   if (!to.meta.public && !getToken()) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }

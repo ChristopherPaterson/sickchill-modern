@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { MENU, type MenuLink } from '@/menu'
+import { MENU, type MenuGroup, type MenuLink } from '@/menu'
 import { useAuthStore } from '@/stores/auth'
 
 defineProps<{ open: boolean }>()
@@ -8,6 +9,15 @@ const emit = defineEmits<{ close: [] }>()
 
 const router = useRouter()
 const auth = useAuthStore()
+
+// Drop the "Sign out" action when login is disabled.
+const menu = computed<MenuGroup[]>(() =>
+  MENU.map((g) =>
+    g.children
+      ? { ...g, children: g.children.filter((c) => c.action !== 'logout' || auth.authEnabled) }
+      : g,
+  ),
+)
 
 function onItem(item: MenuLink) {
   emit('close')
@@ -30,7 +40,7 @@ function onItem(item: MenuLink) {
         </div>
 
         <div class="scroll">
-          <section v-for="group in MENU" :key="group.key" class="group">
+          <section v-for="group in menu" :key="group.key" class="group">
             <!-- Direct-link group -->
             <button
               v-if="group.route && !group.children"

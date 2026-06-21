@@ -11,3 +11,4 @@ class Message(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str
+    auth_enabled: bool

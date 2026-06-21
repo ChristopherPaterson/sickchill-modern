@@ -4,10 +4,20 @@ import { api, clearToken, getToken, setToken } from '@/api/client'
 
 export const useAuthStore = defineStore('auth', () => {
   const username = ref<string | null>(null)
+  // Whether the backend requires login. Resolved at startup from /system/health.
+  const authEnabled = ref<boolean>(true)
   const isAuthenticated = ref<boolean>(!!getToken())
 
+  async function resolveAuthMode(): Promise<void> {
+    try {
+      const { data } = await api.get('/system/health')
+      authEnabled.value = !!data.auth_enabled
+    } catch {
+      authEnabled.value = true // fail safe: assume login required
+    }
+  }
+
   async function login(user: string, password: string): Promise<void> {
-    // OAuth2 password flow expects form-encoded body.
     const body = new URLSearchParams()
     body.set('username', user)
     body.set('password', password)
@@ -28,5 +38,5 @@ export const useAuthStore = defineStore('auth', () => {
     username.value = null
   }
 
-  return { username, isAuthenticated, login, fetchMe, logout }
+  return { username, authEnabled, isAuthenticated, resolveAuthMode, login, fetchMe, logout }
 })

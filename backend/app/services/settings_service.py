@@ -22,6 +22,10 @@ SAB_API_KEY = "sab_api_key"
 SAB_CATEGORY = "sab_category"
 DOWNLOAD_ENABLED = "download_enabled"
 
+TV_LIBRARY_ROOT = "tv_library_root"
+PROCESSING_ENABLED = "processing_enabled"
+PROCESSING_METHOD = "processing_method"  # move | copy | hardlink
+
 
 async def get_setting(db: AsyncSession, key: str) -> str | None:
     row = await db.get(Setting, key)
@@ -72,4 +76,24 @@ async def get_download_config(db: AsyncSession) -> DownloadConfig:
         url=await get_setting(db, SAB_URL),
         api_key=await get_setting(db, SAB_API_KEY),
         category=await get_setting(db, SAB_CATEGORY),
+    )
+
+
+@dataclass(slots=True)
+class ProcessingConfig:
+    enabled: bool
+    library_root: str | None
+    method: str  # move | copy | hardlink
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.library_root)
+
+
+async def get_processing_config(db: AsyncSession) -> ProcessingConfig:
+    enabled = (await get_setting(db, PROCESSING_ENABLED)) == "true"
+    return ProcessingConfig(
+        enabled=enabled,
+        library_root=await get_setting(db, TV_LIBRARY_ROOT),
+        method=(await get_setting(db, PROCESSING_METHOD)) or "move",
     )

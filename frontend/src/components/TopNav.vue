@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { MENU, type MenuGroup, type MenuLink } from '@/menu'
 import { useAuthStore } from '@/stores/auth'
@@ -7,6 +7,15 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 const openKey = ref<string | null>(null)
+
+// Drop the "Sign out" action when login is disabled.
+const menu = computed<MenuGroup[]>(() =>
+  MENU.map((g) =>
+    g.children
+      ? { ...g, children: g.children.filter((c) => c.action !== 'logout' || auth.authEnabled) }
+      : g,
+  ),
+)
 
 function toggle(group: MenuGroup) {
   openKey.value = openKey.value === group.key ? null : group.key
@@ -48,7 +57,7 @@ onUnmounted(() => {
     </RouterLink>
 
     <nav class="menu">
-      <template v-for="group in MENU" :key="group.key">
+      <template v-for="group in menu" :key="group.key">
         <!-- Direct link (no children) -->
         <RouterLink
           v-if="group.route && !group.children"

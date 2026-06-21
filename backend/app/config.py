@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
     jwt_algorithm: str = "HS256"
 
+    # When False (the default), no login is required and every request acts as the
+    # admin user. Set SCM_AUTH_ENABLED=true to require login (do this if the app is
+    # reachable beyond your trusted network).
+    auth_enabled: bool = False
+
     # CORS. In production set this to your own origin(s).
     cors_origins: list[str] = ["http://localhost:5173"]
 
