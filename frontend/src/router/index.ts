@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { getToken } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 
 // Routes backed by real views.
@@ -64,19 +63,18 @@ const router = createRouter({
   routes: [...realRoutes, ...stubRoutes],
 })
 
-// Global auth guard. When auth is disabled there is no login at all.
+// Reactive auth: the guard never forces the login page. If the server requires
+// auth, a protected API call returns 401 and the API client redirects to login
+// (see api/client.ts). When auth is disabled the server never 401s, so login can
+// never appear, regardless of network timing. This avoids the startup race where
+// a slow "is login required?" check let the login page show first.
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (!auth.authEnabled) {
-    // No-login mode: never show the login page.
-    return to.name === 'login' ? { name: 'shows' } : true
-  }
-  if (!to.meta.public && !getToken()) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-  if (to.name === 'login' && getToken()) {
+  // Keep users off the login page when login isn't required.
+  if (to.name === 'login' && auth.authEnabled === false) {
     return { name: 'shows' }
   }
+  return true
 })
 
 export default router
