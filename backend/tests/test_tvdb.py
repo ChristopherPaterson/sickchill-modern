@@ -6,7 +6,6 @@ from datetime import date
 import httpx
 import pytest
 
-from app.config import settings
 from app.indexers import tvdb as tvdb_mod
 from app.indexers.tvdb import BASE_URL, TVDBIndexer
 
@@ -47,12 +46,10 @@ def _handler(request: httpx.Request) -> httpx.Response:
 
 
 @pytest.fixture
-def indexer(monkeypatch):
-    monkeypatch.setattr(settings, "tvdb_api_key", "test-key")
-    monkeypatch.setattr(settings, "tvdb_pin", None)
+def indexer():
     tvdb_mod._token_cache.clear()
     client = httpx.AsyncClient(base_url=BASE_URL, transport=httpx.MockTransport(_handler))
-    return TVDBIndexer(client=client)
+    return TVDBIndexer(api_key="test-key", client=client)
 
 
 async def test_search_maps_results(indexer):

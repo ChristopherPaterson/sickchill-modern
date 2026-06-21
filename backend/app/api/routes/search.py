@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from app.api.deps import CurrentUser
+from app.api.deps import CurrentUser, DbSession
 from app.indexers import get_indexer
 
 
@@ -20,9 +20,9 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 
 @router.get("/shows", response_model=list[ShowSearchResult])
-async def search_shows(q: str, _: CurrentUser):
+async def search_shows(q: str, db: DbSession, _: CurrentUser):
     """Search the configured indexer for shows matching q."""
-    indexer = get_indexer()
+    indexer = await get_indexer(db)
     if indexer is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

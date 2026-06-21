@@ -38,11 +38,18 @@ def _parse_date(value: str | None) -> date | None:
 class TVDBIndexer(Indexer):
     name = "tvdb"
 
-    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
-        if not settings.tvdb_api_key:
-            raise RuntimeError("TVDB API key not configured (set SCM_TVDB_API_KEY)")
-        self.api_key = settings.tvdb_api_key
-        self.pin = settings.tvdb_pin
+    def __init__(
+        self,
+        api_key: str,
+        pin: str | None = None,
+        language: str | None = None,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
+        if not api_key:
+            raise RuntimeError("TVDB API key not configured")
+        self.api_key = api_key
+        self.pin = pin
+        self.language = language or settings.tvdb_language
         self._client = client or httpx.AsyncClient(base_url=BASE_URL, timeout=30)
         self._owns_client = client is None
 

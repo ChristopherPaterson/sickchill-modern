@@ -45,7 +45,7 @@ async def create_show(db: AsyncSession, payload: ShowCreate) -> Show:
     so the operation never hard-errors purely due to indexer availability.
     """
     meta: IndexerShow | None = None
-    indexer = get_indexer()
+    indexer = await get_indexer(db)
     if indexer is not None and payload.tvdb_id is not None:
         try:
             meta = await indexer.get_show(payload.tvdb_id)
