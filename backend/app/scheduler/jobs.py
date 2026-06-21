@@ -24,8 +24,9 @@ async def daily_search_job() -> None:
 
 async def backlog_search_job() -> None:
     try:
-        # TODO: search wanted/missing back-catalogue episodes.
-        logger.info("backlog_search_job tick (not yet implemented)")
+        async with SessionLocal() as db:
+            count = await search_service.backlog_search(db)
+        logger.info("backlog_search_job snatched %d episodes", count)
     except Exception:
         logger.exception("backlog_search_job failed")
 

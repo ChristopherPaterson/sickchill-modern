@@ -4,9 +4,10 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.schemas.common import Message
 from app.schemas.episode import EpisodeOut
 from app.schemas.show import ShowCreate, ShowListItem, ShowOut, ShowStats, ShowUpdate
-from app.services import show_service
+from app.services import search_service, show_service
 
 router = APIRouter(prefix="/shows", tags=["shows"])
 
@@ -55,3 +56,11 @@ async def list_episodes(show_id: int, db: DbSession, _: CurrentUser):
 async def get_stats(show_id: int, db: DbSession, _: CurrentUser):
     await _get_or_404(db, show_id)
     return await show_service.show_stats(db, show_id)
+
+
+@router.post("/{show_id}/search-wanted", response_model=Message)
+async def search_wanted(show_id: int, db: DbSession, _: CurrentUser):
+    """Search and snatch all wanted episodes for this show."""
+    await _get_or_404(db, show_id)
+    count = await search_service.search_show_wanted(db, show_id)
+    return Message(message=f"Snatched {count} wanted episode(s)")

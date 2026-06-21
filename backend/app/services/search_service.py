@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.downloaders import maybe_download
 from app.models.episode import Episode, EpisodeStatus
 from app.models.history import HistoryAction, HistoryEntry
+from app.models.show import Show
 from app.providers.base import SearchQuery, SearchResult
 from app.providers.quality import parse_release
 from app.providers.registry import enabled_providers
@@ -108,6 +109,14 @@ async def snatch_episode(db: AsyncSession, episode: Episode) -> SearchResult | N
     return best
 
 
+async def _snatch_all(db: AsyncSession, episodes: list[Episode]) -> int:
+    snatched = 0
+    for episode in episodes:
+        if await snatch_episode(db, episode):
+            snatched += 1
+    return snatched
+
+
 async def daily_search(db: AsyncSession) -> int:
     """Find and snatch wanted episodes that have aired. Returns count snatched."""
     today = date.today()
@@ -119,9 +128,35 @@ async def daily_search(db: AsyncSession) -> int:
         )
     )
     wanted = list(result.scalars().all())
-    snatched = 0
-    for episode in wanted:
-        if await snatch_episode(db, episode):
-            snatched += 1
-    logger.info("daily_search: %d/%d wanted episodes snatched", snatched, len(wanted))
+    snatched = await _snatch_all(db, wanted)
+    logger.info("daily_search: %d/%d aired wanted episodes snatched", snatched, len(wanted))
     return snatched
+
+
+async def backlog_search(db: AsyncSession) -> int:
+    """Search and snatch every wanted episode, regardless of air date."""
+    result = await db.execute(select(Episode).where(Episode.status == EpisodeStatus.wanted))
+    wanted = list(result.scalars().all())
+    snatched = await _snatch_all(db, wanted)
+    logger.info("backlog_search: %d/%d wanted episodes snatched", snatched, len(wanted))
+    return snatched
+
+
+async def search_show_wanted(db: AsyncSession, show_id: int) -> int:
+    """Search and snatch all wanted episodes for one show."""
+    result = await db.execute(
+        select(Episode).where(Episode.show_id == show_id, Episode.status == EpisodeStatus.wanted)
+    )
+    wanted = list(result.scalars().all())
+    return await _snatch_all(db, wanted)
+
+
+async def list_wanted(db: AsyncSession) -> list[tuple[Episode, str]]:
+    """Wanted episodes joined with their show name, for the backlog overview."""
+    rows = await db.execute(
+        select(Episode, Show.name)
+        .join(Show, Episode.show_id == Show.id)
+        .where(Episode.status == EpisodeStatus.wanted)
+        .order_by(Show.name, Episode.season, Episode.episode)
+    )
+    return [(ep, name) for ep, name in rows.all()]

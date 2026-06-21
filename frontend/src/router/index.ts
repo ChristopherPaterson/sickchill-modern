@@ -30,6 +30,12 @@ const realRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/PostProcessingConfigView.vue'),
     meta: { title: 'Post Processing' },
   },
+  {
+    path: '/manage/backlog',
+    name: 'manage-backlog',
+    component: () => import('@/views/BacklogOverviewView.vue'),
+    meta: { title: 'Backlog Overview' },
+  },
   { path: '/schedule', name: 'schedule', component: () => import('@/views/CalendarView.vue'), meta: { title: 'Schedule' } },
   { path: '/history', name: 'history', component: () => import('@/views/HistoryView.vue'), meta: { title: 'History' } },
   { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue'), meta: { title: 'General' } },
@@ -46,7 +52,6 @@ const realRoutes: RouteRecordRaw[] = [
 const placeholder = () => import('@/views/PlaceholderView.vue')
 const stub: Array<[string, string, string]> = [
   ['/manage', 'manage', 'Mass Update'],
-  ['/manage/backlog', 'manage-backlog', 'Backlog Overview'],
   ['/manage/searches', 'manage-searches', 'Manage Searches'],
   ['/manage/episode-status', 'manage-episode-status', 'Episode Status Management'],
   ['/manage/failed', 'manage-failed', 'Failed Downloads'],
