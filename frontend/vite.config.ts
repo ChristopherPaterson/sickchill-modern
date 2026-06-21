@@ -9,6 +9,11 @@ export default defineConfig({
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Self-destroying: ships a service worker that unregisters any previously
+      // installed SW and clears its caches. This kills the stale-cache trap during
+      // active development (old app being served after a deploy). Re-enable real
+      // offline caching once the app stabilises by removing this flag.
+      selfDestroying: true,
       manifest: {
         name: 'SickChill Modern',
         short_name: 'SickChill',
